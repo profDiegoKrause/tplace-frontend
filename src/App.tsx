@@ -228,49 +228,56 @@ const TPlace = () => {
       {/* Header */}
       <header className="bg-primary-900 text-white shadow-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              {/*<div className="bg-white text-primary-900 p-2 rounded-lg shadow-md" aria-hidden>
-                <img src="logo.png" alt="Logo TPlace" className="w-8 h-8"/>
-              </div>*/}
-              <div>
-                <h1 className="text-2xl md:text-3xl font-black leading-tight">TPlace</h1>
-                <p className="text-xs/5 font-medium opacity-90">Comércio local na palma da sua mão</p>
+          {/* Header separated in two rows: top (logo + cart) and bottom (search). Search is 100% on mobile and 70% centered on desktop */}
+          <div className="flex flex-col gap-3">
+            {/* Top row: logo left, cart right */}
+            <div className="w-full flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* optional logo */}
+                {/*<div className="bg-white text-primary-900 p-2 rounded-lg shadow-md" aria-hidden>
+                  <img src="logo.png" alt="Logo TPlace" className="w-8 h-8"/>
+                </div>*/}
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-black leading-tight">TPlace</h1>
+                  <p className="text-xs/5 font-medium opacity-90 hidden sm:block">Comércio local na palma da sua mão</p>
+                </div>
               </div>
+
+              <button
+                onClick={() => setShowCart(true)}
+                className="relative bg-white text-ink px-4 py-2 rounded-md hover:bg-sand transition flex items-center gap-2 shadow-md min-h-[40px] focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/40"
+                aria-haspopup="dialog"
+                aria-expanded={showCart}
+              >
+                <ShoppingCart size={20} />
+                <span className="font-semibold text-sm hidden sm:inline">Carrinho</span>
+                {cart.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-primary-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                    {cart.length}
+                  </span>
+                )}
+              </button>
             </div>
 
-            {/* Busca */}
-            <form role="search" aria-label="Buscar produtos" className="flex-1 relative" onSubmit={(e)=>{e.preventDefault()}}>
-              <label htmlFor="busca" className="sr-only">Buscar produtos</label>
-              <input
-                id="busca"
-                type="search"
-                placeholder="Buscar produtos, marcas e muito mais"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                autoComplete="off"
-                aria-controls="resultados"
-                className="w-full pl-4 pr-24 py-3 rounded-md text-ink placeholder:opacity-70 focus:outline-none focus:ring-4 focus:ring-primary-500/40 shadow-md"
-              />
-              <button type="submit" aria-label="Pesquisar" className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary-500 hover:bg-primary-700 px-3 py-2 rounded-md transition min-h-[44px]">
-                <Search size={20} className="text-ink" />
-              </button>
-            </form>
-
-            <button
-              onClick={() => setShowCart(true)}
-              className="relative bg-white text-ink px-5 py-3 rounded-md hover:bg-sand transition flex items-center gap-2 shadow-md min-h-[44px] focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/40"
-              aria-haspopup="dialog"
-              aria-expanded={showCart}
-            >
-              <ShoppingCart size={22} />
-              <span className="font-semibold">Carrinho</span>
-              {cart.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-primary-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                  {cart.length}
-                </span>
-              )}
-            </button>
+            {/* Bottom row: centered search bar. Mobile: full width; Desktop (md+): 70% width and centered */}
+            <div className="w-full">
+              <form role="search" aria-label="Buscar produtos" className="relative mt-3 sm:mt-0 w-full md:w-[100%] mx-auto" onSubmit={(e)=>{e.preventDefault()}}>
+                <label htmlFor="busca" className="sr-only">Buscar produtos</label>
+                <input
+                  id="busca"
+                  type="search"
+                  placeholder="Buscar produtos, marcas e muito mais"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  autoComplete="off"
+                  aria-controls="resultados"
+                  className="w-full pl-4 pr-24 py-3 rounded-md text-ink placeholder:opacity-70 focus:outline-none focus:ring-4 focus:ring-primary-500/40 shadow-md"
+                />
+                <button type="submit" aria-label="Pesquisar" className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary-500 hover:bg-primary-700 px-3 py-2 rounded-md transition min-h-[40px]">
+                  <Search size={18} className="text-ink" />
+                </button>
+              </form>
+            </div>
           </div>
         </div>
 
@@ -629,15 +636,6 @@ const TPlace = () => {
                               className="w-full bg-primary-700 text-white py-3 rounded-lg hover:bg-primary-900 active:scale-[.98] transition font-semibold text-sm focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/30 min-h-[44px]"
                             >
                               Adicionar ao carrinho
-                            </button>
-                            <button
-                              onClick={() => {
-                                setQuickViewProduct(product)
-                                setQuantity(1)
-                              }}
-                              className="w-full border-2 border-primary-700 text-primary-700 py-3 rounded-lg hover:bg-primary-500/20 active:scale-[.98] transition font-semibold text-sm min-h-[44px] focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/30"
-                            >
-                              Opções de compra
                             </button>
                           </div>
                         </div>
