@@ -52,6 +52,7 @@ const TPlace = () => {
   const [quickViewProduct, setQuickViewProduct] = useState<any | null>(null)
   const [sortBy, setSortBy] = useState('relevance')
   const [priceRange, setPriceRange] = useState('all')
+  const [filtersModalOpen, setFiltersModalOpen] = useState(false)
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'error' | 'info' })
   const [favorites, setFavorites] = useState<number[]>([])
   const [quantity, setQuantity] = useState(1)
@@ -182,11 +183,11 @@ const TPlace = () => {
 
   // Trava scroll do body quando há modal
   useEffect(() => {
-  const modalOpen = showCart || !!quickViewProduct
+  const modalOpen = showCart || !!quickViewProduct || filtersModalOpen
     if (typeof document !== 'undefined') {
       document.body.style.overflow = modalOpen ? 'hidden' : ''
     }
-  }, [showCart, quickViewProduct])
+  }, [showCart, quickViewProduct, filtersModalOpen])
 
   // Foco inicial nos modais
   useEffect(() => {
@@ -328,131 +329,7 @@ const TPlace = () => {
 
       <div id="conteudo" className="container mx-auto px-4 py-6">
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Sidebar */}
-          <aside className="w-full lg:w-72 space-y-4">
-            <div className="bg-white rounded-xl shadow-sm border border-sand-strong p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Filter size={18} className="text-primary-700" />
-                <h3 className="font-bold">Filtrar</h3>
-              </div>
-
-              {/* Preço */}
-              <fieldset className="mb-6">
-                <legend className="block text-sm font-bold mb-3">Preço</legend>
-                <div className="space-y-2">
-                  {[
-                    { id: 'all', label: 'Todos os preços' },
-                    { id: 'under100', label: 'Até R$ 100' },
-                    { id: '100to500', label: 'R$ 100 a R$ 500' },
-                    { id: '500to1000', label: 'R$ 500 a R$ 1.000' },
-                    { id: 'over1000', label: 'Mais de R$ 1.000' },
-                  ].map((opt) => (
-                    <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-sm">
-                      <input
-                        type="radio"
-                        value={opt.id}
-                        checked={priceRange === opt.id}
-                        onChange={(e) => setPriceRange(e.target.value)}
-                        className="accent-primary-700 w-4 h-4"
-                      />
-                      <span>{opt.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <div className="border-t border-sand-strong my-6" />
-
-              {/* Loja */}
-              <div className="mb-6">
-                <label
-                  htmlFor="select-loja"
-                  className="block text-sm font-bold mb-3"
-                >
-                  Loja
-                </label>
-
-                <div className="relative">
-                  <select
-                    id="select-loja"
-                    value={selectedStore}
-                    onChange={(e) => setSelectedStore(e.target.value)}
-                    className="w-full px-3 py-2 pr-10 border border-sand-strong rounded-md focus:outline-none focus:ring-4 focus:ring-primary-500/30 appearance-none"
-                  >
-                    <option value="all">Todas as lojas</option>
-                    {stores.map((store) => (
-                      <option key={store.id} value={store.id}>
-                        {store.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-
-
-              <div className="border-t border-sand-strong my-6" />
-
-              {/* Entrega */}
-              <fieldset>
-                <legend className="block text-sm font-bold mb-3">Entrega</legend>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer text-sm">
-                    <input
-                      type="radio"
-                      value="all"
-                      checked={deliveryFilter === 'all'}
-                      onChange={(e) => setDeliveryFilter(e.target.value)}
-                      className="accent-primary-700 w-4 h-4"
-                    />
-                    <span>Todas</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer text-sm">
-                    <input
-                      type="radio"
-                      value="fast"
-                      checked={deliveryFilter === 'fast'}
-                      onChange={(e) => setDeliveryFilter(e.target.value)}
-                      className="accent-primary-700 w-4 h-4"
-                    />
-                    <span className="flex items-center gap-1">
-                      Entrega rápida <Clock size={14} className="text-primary-700" />
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer text-sm">
-                    <input
-                      type="radio"
-                      value="standard"
-                      checked={deliveryFilter === 'standard'}
-                      onChange={(e) => setDeliveryFilter(e.target.value)}
-                      className="accent-primary-700 w-4 h-4"
-                    />
-                    <span>Entrega padrão</span>
-                  </label>
-                </div>
-              </fieldset>
-            </div>
-
-            <div className="bg-primary-900 text-white rounded-xl shadow-sm p-4">
-              <div className="flex items-start gap-3">
-                <Package size={24} />
-                <div>
-                  <h4 className="font-bold mb-1">Apoie o local</h4>
-                  <p className="text-sm opacity-90">Fortaleça os comerciantes da sua cidade e impulsione a economia local.</p>
-                </div>
-              </div>
-            </div>
-          </aside>
+          {/* Sidebar removed: filters moved to a modal. On desktop the main content takes full width. */}
 
           {/* Lista de produtos */}
           <main className="flex-1 min-w-0">
@@ -463,6 +340,11 @@ const TPlace = () => {
               </h2>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button onClick={() => setFiltersModalOpen(true)} className="px-3 py-2 border border-sand-strong rounded-md bg-white hover:bg-sand text-sm font-semibold flex items-center gap-2">
+                  <Filter size={16} className="text-primary-700" />
+                  Filtros
+                </button>
+
                 <label htmlFor="ordenar" className="text-sm font-medium whitespace-nowrap">
                   Ordenar por
                 </label>
@@ -472,7 +354,7 @@ const TPlace = () => {
                     id="ordenar"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="px-4 py-2 pr-10 border border-sand-strong rounded-md focus:outline-none focus:ring-4 focus:ring-primary-500/30 text-sm font-medium min-w-[220px] appearance-none"
+                    className="w-full sm:w-auto px-3 py-2 pr-10 border border-sand-strong rounded-md focus:outline-none focus:ring-4 focus:ring-primary-500/30 text-sm font-medium appearance-none"
                   >
                     <option value="relevance">Mais relevantes</option>
                     <option value="sales">Mais vendidos</option>
@@ -495,6 +377,43 @@ const TPlace = () => {
               </div>
             </div>
 
+            {/* Selected filters summary */}
+            {(priceRange !== 'all' || selectedStore !== 'all' || deliveryFilter !== 'all' || searchTerm.length > 0 || selectedCategory !== 'all') && (
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold mr-2">Filtros aplicados:</span>
+                {searchTerm.length > 0 && (
+                  <span className="inline-flex items-center gap-2 bg-sand px-3 py-1 rounded-full text-sm">
+                    <span>Busca: "{searchTerm}"</span>
+                    <button onClick={() => setSearchTerm('')} className="text-ink/70 font-bold">×</button>
+                  </span>
+                )}
+                {selectedCategory !== 'all' && (
+                  <span className="inline-flex items-center gap-2 bg-sand px-3 py-1 rounded-full text-sm">
+                    <span>Categoria: {selectedCategory}</span>
+                    <button onClick={() => setSelectedCategory('all')} className="text-ink/70 font-bold">×</button>
+                  </span>
+                )}
+                {selectedStore !== 'all' && (
+                  <span className="inline-flex items-center gap-2 bg-sand px-3 py-1 rounded-full text-sm">
+                    <span>Loja: {stores.find(s => String(s.id) === String(selectedStore))?.name}</span>
+                    <button onClick={() => setSelectedStore('all')} className="text-ink/70 font-bold">×</button>
+                  </span>
+                )}
+                {priceRange !== 'all' && (
+                  <span className="inline-flex items-center gap-2 bg-sand px-3 py-1 rounded-full text-sm">
+                    <span>Preço: {priceRange === 'under100' ? 'Até R$100' : priceRange === '100to500' ? 'R$100–500' : priceRange === '500to1000' ? 'R$500–1.000' : 'Mais de R$1.000'}</span>
+                    <button onClick={() => setPriceRange('all')} className="text-ink/70 font-bold">×</button>
+                  </span>
+                )}
+                {deliveryFilter !== 'all' && (
+                  <span className="inline-flex items-center gap-2 bg-sand px-3 py-1 rounded-full text-sm">
+                    <span>{deliveryFilter === 'fast' ? 'Entrega rápida' : 'Entrega padrão'}</span>
+                    <button onClick={() => setDeliveryFilter('all')} className="text-ink/70 font-bold">×</button>
+                  </span>
+                )}
+                <button onClick={() => { setPriceRange('all'); setSelectedStore('all'); setDeliveryFilter('all'); setSelectedCategory('all'); setSearchTerm(''); }} className="ml-2 text-sm text-primary-700 underline">Limpar tudo</button>
+              </div>
+            )}
 
             {/* Grid */}
             <div id="resultados" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-busy={isLoading} aria-live="polite">
@@ -656,6 +575,128 @@ const TPlace = () => {
       </div>
 
       {/* Modal Carrinho / Checkout */}
+      {filtersModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4"
+          onClick={() => setFiltersModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="filtros-titulo"
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 id="filtros-titulo" className="text-lg font-bold">Filtros</h2>
+                <button onClick={() => setFiltersModalOpen(false)} className="p-2 hover:bg-sand rounded-md"><X size={20} /></button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Preço */}
+                <fieldset>
+                  <legend className="block text-sm font-bold mb-3">Preço</legend>
+                  <div className="space-y-2">
+                    {[
+                      { id: 'all', label: 'Todos os preços' },
+                      { id: 'under100', label: 'Até R$ 100' },
+                      { id: '100to500', label: 'R$ 100 a R$ 500' },
+                      { id: '500to1000', label: 'R$ 500 a R$ 1.000' },
+                      { id: 'over1000', label: 'Mais de R$ 1.000' },
+                    ].map((opt) => (
+                      <label key={opt.id} className="flex items-center gap-2 cursor-pointer text-sm">
+                        <input
+                          type="radio"
+                          value={opt.id}
+                          checked={priceRange === opt.id}
+                          onChange={(e) => setPriceRange(e.target.value)}
+                          className="accent-primary-700 w-4 h-4"
+                        />
+                        <span>{opt.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                {/* Loja */}
+                <div>
+                  <label htmlFor="select-loja-modal" className="block text-sm font-bold mb-3">Loja</label>
+                  <div className="relative">
+                    <select
+                      id="select-loja-modal"
+                      value={selectedStore}
+                      onChange={(e) => setSelectedStore(e.target.value)}
+                      className="w-full px-3 py-2 pr-10 border border-sand-strong rounded-md focus:outline-none focus:ring-4 focus:ring-primary-500/30 appearance-none"
+                    >
+                      <option value="all">Todas as lojas</option>
+                      {stores.map((store) => (
+                        <option key={store.id} value={store.id}>
+                          {store.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Entrega */}
+                <fieldset>
+                  <legend className="block text-sm font-bold mb-3">Entrega</legend>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input
+                        type="radio"
+                        value="all"
+                        checked={deliveryFilter === 'all'}
+                        onChange={(e) => setDeliveryFilter(e.target.value)}
+                        className="accent-primary-700 w-4 h-4"
+                      />
+                      <span>Todas</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input
+                        type="radio"
+                        value="fast"
+                        checked={deliveryFilter === 'fast'}
+                        onChange={(e) => setDeliveryFilter(e.target.value)}
+                        className="accent-primary-700 w-4 h-4"
+                      />
+                      <span className="flex items-center gap-1">Entrega rápida <Clock size={14} className="text-primary-700" /></span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input
+                        type="radio"
+                        value="standard"
+                        checked={deliveryFilter === 'standard'}
+                        onChange={(e) => setDeliveryFilter(e.target.value)}
+                        className="accent-primary-700 w-4 h-4"
+                      />
+                      <span>Entrega padrão</span>
+                    </label>
+                  </div>
+                </fieldset>
+
+                <div className="flex items-center gap-3 justify-end">
+                  <button onClick={() => { setPriceRange('all'); setSelectedStore('all'); setDeliveryFilter('all'); }} className="px-4 py-2 rounded-md border border-sand-strong">Limpar</button>
+                  <button onClick={() => setFiltersModalOpen(false)} className="px-4 py-2 bg-primary-700 text-white rounded-md">Aplicar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCart && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
