@@ -38,6 +38,9 @@ const MapTrackingComponent: React.FC<{ deliveryProgress: number }> = ({ delivery
   const markerStore = useRef<L.Marker | null>(null)
   const markerDelivery = useRef<L.Marker | null>(null)
   const markerDest = useRef<L.Marker | null>(null)
+  const routePolyline = useRef<L.Polyline | null>(null)
+  const routeCoordsRef = useRef<Array<[number, number]>>([]) // [lat,lng]
+  const cumulativeDistRef = useRef<number[]>([]) // cumulative meters
 
   // Coordenadas: FAG Toledo, PR (Rua Floriano Peixoto, 1000 - Centro)
   const destineLocation = { lat: -24.72222, lng: -53.76165, name: 'FAG Toledo - Rua Floriano Peixoto, 1000' }
@@ -45,16 +48,41 @@ const MapTrackingComponent: React.FC<{ deliveryProgress: number }> = ({ delivery
   // Origem: Centro de Toledo, PR
   const storeLocation = { lat: -24.7136, lng: -53.7431, name: 'Centro de Toledo' }
 
-  // Posição animada do entregador (interpolação entre loja e destino)
-  const deliveryLocation = {
-    lat: storeLocation.lat + (destineLocation.lat - storeLocation.lat) * (deliveryProgress / 100),
-    lng: storeLocation.lng + (destineLocation.lng - storeLocation.lng) * (deliveryProgress / 100),
+  // Haversine distance (meters)
+  const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const toRad = (v: number) => (v * Math.PI) / 180
+    const R = 6371000
+    const dLat = toRad(lat2 - lat1)
+    const dLon = toRad(lon2 - lon1)
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
+  // Given a fraction [0..1], return latlng on the route by linear interpolation along cumulative distances
+  const latlngAtFraction = (fraction: number) => {
+    const coords = routeCoordsRef.current
+    const cum = cumulativeDistRef.current
+    if (!coords || coords.length === 0) return L.latLng(storeLocation.lat, storeLocation.lng)
+    const total = cum[cum.length - 1] || 0
+    const target = Math.max(0, Math.min(1, fraction)) * total
+    // find segment
+    let i = 0
+    while (i < cum.length && cum[i] < target) i++
+    if (i === 0) return L.latLng(coords[0][0], coords[0][1])
+    const segStart = coords[i - 1]
+    const segEnd = coords[i]
+    const segDist = cum[i] - cum[i - 1]
+    const segTarget = target - cum[i - 1]
+    const t = segDist === 0 ? 0 : segTarget / segDist
+    const lat = segStart[0] + (segEnd[0] - segStart[0]) * t
+    const lng = segStart[1] + (segEnd[1] - segStart[1]) * t
+    return L.latLng(lat, lng)
   }
 
   useEffect(() => {
     if (!mapContainer.current) return
 
-    // Inicializar mapa apenas uma vez
     if (!map.current) {
       map.current = L.map(mapContainer.current).setView([destineLocation.lat, destineLocation.lng], 15)
 
@@ -63,7 +91,7 @@ const MapTrackingComponent: React.FC<{ deliveryProgress: number }> = ({ delivery
         maxZoom: 19,
       }).addTo(map.current)
 
-      // Marcador da loja (origem)
+      // Markers
       markerStore.current = L.marker([storeLocation.lat, storeLocation.lng], {
         icon: L.icon({
           iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgMTBjMCA3LTkgMTMtOSAxM3MtOSAtNiAtOSAtMTNhOSA5IDAgMCAxIDE4IDB6Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMCIgcj0iMyIvPjwvc3ZnPg==',
@@ -74,7 +102,6 @@ const MapTrackingComponent: React.FC<{ deliveryProgress: number }> = ({ delivery
         .addTo(map.current)
         .bindPopup(`<strong>Loja de origem</strong><br/>${storeLocation.name}`)
 
-      // Marcador de destino (FAG Toledo)
       markerDest.current = L.marker([destineLocation.lat, destineLocation.lng], {
         icon: L.icon({
           iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxMGI5ODEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgMTBjMCA3LTkgMTMtOSAxM3MtOSAtNiAtOSAtMTNhOSA5IDAgMCAxIDE4IDB6Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMCIgcj0iMyIvPjwvc3ZnPg==',
@@ -85,30 +112,78 @@ const MapTrackingComponent: React.FC<{ deliveryProgress: number }> = ({ delivery
         .addTo(map.current)
         .bindPopup(`<strong>Seu Destino</strong><br/>${destineLocation.name}`)
 
-      // Desenhar linha de rota
-      const routeLine = L.polyline([[storeLocation.lat, storeLocation.lng], [destineLocation.lat, destineLocation.lng]], {
-        color: '#A7C957',
-        weight: 3,
-        opacity: 0.7,
-        dashArray: '5, 10',
-      }).addTo(map.current)
-
-      map.current.fitBounds(routeLine.getBounds(), { padding: [50, 50] })
-    }
-
-    // Atualizar posição do entregador
-    if (markerDelivery.current) {
-      markerDelivery.current.setLatLng([deliveryLocation.lat, deliveryLocation.lng])
-    } else if (map.current) {
-      markerDelivery.current = L.marker([deliveryLocation.lat, deliveryLocation.lng], {
+      // Delivery marker initial
+      markerDelivery.current = L.marker([storeLocation.lat, storeLocation.lng], {
         icon: L.icon({
           iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmOTczMTYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSI0IiB5PSI5IiB3aWR0aD0iMTYiIGhlaWdodD0iOCIgcng9IjEiLz48cGF0aCBkPSJNMTAgOXY2bTQgLTZ2NiIvPjwvc3ZnPg==',
           iconSize: [40, 40],
           iconAnchor: [20, 20],
         }),
-      })
-        .addTo(map.current)
-        .bindPopup('🚙 Entregador em movimento')
+      }).addTo(map.current).bindPopup('🚙 Entregador em movimento')
+    }
+
+    // Fetch route from OSRM (driving profile) and draw real street route
+    const fetchRoute = async () => {
+      try {
+        const aLon = storeLocation.lng
+        const aLat = storeLocation.lat
+        const bLon = destineLocation.lng
+        const bLat = destineLocation.lat
+        const url = `https://router.project-osrm.org/route/v1/driving/${aLon},${aLat};${bLon},${bLat}?overview=full&geometries=geojson`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error('OSRM route fetch failed')
+        const data = await res.json()
+        const coords: Array<[number, number]> = (data.routes && data.routes[0] && data.routes[0].geometry && data.routes[0].geometry.coordinates) || []
+        // coords are [lng, lat] -> convert to [lat,lng]
+        const latlngs = coords.map((c) => [c[1], c[0]] as [number, number])
+        routeCoordsRef.current = latlngs
+
+        // compute cumulative distances
+        const cum: number[] = []
+        let acc = 0
+        for (let i = 0; i < latlngs.length; i++) {
+          if (i === 0) cum.push(0)
+          else {
+            const prev = latlngs[i - 1]
+            const cur = latlngs[i]
+            const d = haversine(prev[0], prev[1], cur[0], cur[1])
+            acc += d
+            cum.push(acc)
+          }
+        }
+        cumulativeDistRef.current = cum
+
+        // remove existing polyline
+        if (routePolyline.current) {
+          routePolyline.current.remove()
+          routePolyline.current = null
+        }
+
+        if (map.current) {
+          routePolyline.current = L.polyline(latlngs as any, { color: '#6A994E', weight: 5, opacity: 0.9 }).addTo(map.current)
+          map.current.fitBounds(routePolyline.current.getBounds(), { padding: [50, 50] })
+        }
+      } catch (e) {
+        // fallback: draw straight line
+        if (map.current && !routePolyline.current) {
+          routePolyline.current = L.polyline([[storeLocation.lat, storeLocation.lng], [destineLocation.lat, destineLocation.lng]], { color: '#6A994E', weight: 4, opacity: 0.7, dashArray: '6,8' }).addTo(map.current)
+          routeCoordsRef.current = [[storeLocation.lat, storeLocation.lng], [destineLocation.lat, destineLocation.lng]]
+          cumulativeDistRef.current = [0, haversine(storeLocation.lat, storeLocation.lng, destineLocation.lat, destineLocation.lng)]
+          map.current.fitBounds(routePolyline.current.getBounds(), { padding: [50, 50] })
+        }
+      }
+    }
+
+    fetchRoute()
+  }, [])
+
+  // Update delivery marker position according to deliveryProgress (fraction along route)
+  useEffect(() => {
+    if (!map.current) return
+    const frac = Math.max(0, Math.min(1, deliveryProgress / 100))
+    const latlng = latlngAtFraction(frac)
+    if (markerDelivery.current) {
+      markerDelivery.current.setLatLng(latlng)
     }
   }, [deliveryProgress])
 
@@ -189,16 +264,16 @@ const TPlace = () => {
 
   // Produtos (amostra)
   const products = [
-    { id: 1, name: 'Nike Air Max 90 Essential', brand: 'Nike', price: 699.9, oldPrice: 899.9, store: 1, category: 'Esportes', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop', stock: 25, justInTime: false, freeShipping: true, installments: 10, condition: 'new', sales: 847, description: 'Tênis Nike Air Max 90 com design clássico e conforto excepcional', sizes: Array.from({length:10},(_,i)=>String(35+i)), colors: ['#000000','#ffffff','#f97316'] },
+    { id: 1, name: 'Nike Air Max 90 Essential', brand: 'Nike', price: 699.9, oldPrice: 899.9, store: 1, category: 'Esportes', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop', stock: 25, justInTime: false, freeShipping: true, installments: 10, condition: 'new', sales: 847, description: 'Tênis Nike Air Max 90 com design clássico e conforto excepcional', sizes: Array.from({length:10},(_,i)=>String(35+i)), colors: ['#000000','#ffffff','#6A994E'] },
     { id: 2, name: 'Nike Air Force 1 Branco', brand: 'Nike', price: 599.9, oldPrice: 799.9, store: 1, category: 'Esportes', image: 'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=400&h=400&fit=crop', stock: 30, justInTime: false, freeShipping: true, installments: 10, condition: 'new', sales: 1234, description: 'Icônico Nike Air Force 1 branco, perfeito para qualquer ocasião', sizes: Array.from({length:10},(_,i)=>String(35+i)), colors: ['#ffffff','#000000','#ef4444'] },
     { id: 3, name: 'Adidas Ultraboost 22', brand: 'Adidas', price: 799.9, oldPrice: 999.9, store: 1, category: 'Esportes', image: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=400&h=400&fit=crop', stock: 18, justInTime: false, freeShipping: true, installments: 10, condition: 'new', sales: 623, description: 'Adidas Ultraboost com tecnologia Boost para máximo conforto', sizes: Array.from({length:10},(_,i)=>String(35+i)), colors: ['#111827','#94a3b8','#10b981'] },
     { id: 4, name: 'Adidas Superstar Clássico', brand: 'Adidas', price: 449.9, store: 8, category: 'Esportes', image: 'https://images.unsplash.com/photo-1605348532760-6753d2c43329?w=400&h=400&fit=crop', stock: 40, justInTime: false, freeShipping: true, installments: 8, condition: 'new', sales: 1567, description: 'O clássico Adidas Superstar que nunca sai de moda', sizes: Array.from({length:10},(_,i)=>String(35+i)), colors: ['#ffffff','#000000'] },
-    { id: 5, name: 'Puma RS-X Colorido', brand: 'Puma', price: 549.9, oldPrice: 699.9, store: 8, category: 'Esportes', image: 'https://images.unsplash.com/photo-1539185441755-769473a23570?w=400&h=400&fit=crop', stock: 22, justInTime: false, freeShipping: true, installments: 9, condition: 'new', sales: 445, description: 'Puma RS-X com design moderno e colorido', sizes: Array.from({length:10},(_,i)=>String(35+i)), colors: ['#f97316','#06b6d4','#a78bfa'] },
+    { id: 5, name: 'Puma RS-X Colorido', brand: 'Puma', price: 549.9, oldPrice: 699.9, store: 8, category: 'Esportes', image: 'https://images.unsplash.com/photo-1539185441755-769473a23570?w=400&h=400&fit=crop', stock: 22, justInTime: false, freeShipping: true, installments: 9, condition: 'new', sales: 445, description: 'Puma RS-X com design moderno e colorido', sizes: Array.from({length:10},(_,i)=>String(35+i)), colors: ['#6A994E','#06b6d4','#a78bfa'] },
     { id: 6, name: 'Camiseta Nike Dri-Fit Training', brand: 'Nike', price: 129.9, oldPrice: 179.9, store: 2, category: 'Moda', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop', stock: 50, justInTime: true, freeShipping: true, installments: 3, condition: 'new', sales: 2145, description: 'Camiseta Nike com tecnologia Dri-Fit para treinos intensos', sizes: ['P','M','G','GG'], colors: ['#111827','#ef4444','#06b6d4'] },
     { id: 7, name: 'Moletom Nike Sportswear', brand: 'Nike', price: 299.9, oldPrice: 399.9, store: 2, category: 'Moda', image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400&h=400&fit=crop', stock: 35, justInTime: true, freeShipping: true, installments: 6, condition: 'new', sales: 876, description: 'Moletom Nike confortável para o dia a dia', sizes: ['P','M','G','GG'], colors: ['#111827','#64748b'] },
     { id: 8, name: 'Jaqueta Adidas Corta-Vento', brand: 'Adidas', price: 349.9, oldPrice: 499.9, store: 7, category: 'Moda', image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=400&fit=crop', stock: 22, justInTime: true, freeShipping: true, installments: 7, condition: 'new', sales: 543, description: 'Jaqueta Adidas impermeável e respirável', sizes: ['P','M','G','GG'], colors: ['#0f172a','#0ea5a9'] },
     { id: 9, name: 'Samsung Galaxy S24 Ultra 256GB', brand: 'Samsung', price: 5499.9, oldPrice: 6499.9, store: 3, category: 'Eletrônicos', image: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&h=400&fit=crop', stock: 12, justInTime: true, freeShipping: false, installments: 12, condition: 'new', sales: 234, description: 'Top de linha Samsung com câmera profissional e S Pen', storageVariants: ['256GB','512GB'], colors: ['#0f172a','#ffffff','#94a3b8'] },
-    { id: 10, name: 'Samsung Galaxy Buds2 Pro', brand: 'Samsung', price: 899.9, oldPrice: 1299.9, store: 3, category: 'Eletrônicos', image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400&h=400&fit=crop', stock: 30, justInTime: true, freeShipping: false, installments: 10, condition: 'new', sales: 678, description: 'Fones Samsung com cancelamento de ruído ativo', colors: ['#111827','#f97316'] },
+    { id: 10, name: 'Samsung Galaxy Buds2 Pro', brand: 'Samsung', price: 899.9, oldPrice: 1299.9, store: 3, category: 'Eletrônicos', image: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400&h=400&fit=crop', stock: 30, justInTime: true, freeShipping: false, installments: 10, condition: 'new', sales: 678, description: 'Fones Samsung com cancelamento de ruído ativo', colors: ['#111827','#6A994E'] },
   ]
 
   const categories = ['all', 'Moda', 'Esportes', 'Eletrônicos', 'Casa']
