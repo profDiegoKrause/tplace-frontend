@@ -239,6 +239,30 @@ const TPlace = () => {
     paymentMethod: 'credit' as 'credit' | 'pix' | 'boleto',
   })
 
+  // Card form state for credit card payment simulation
+  const [cardNumber, setCardNumber] = useState('')
+  const [cardName, setCardName] = useState('')
+  const [cardExpiry, setCardExpiry] = useState('')
+  const [cardCVC, setCardCVC] = useState('')
+  const [cardBrand, setCardBrand] = useState<string | null>(null)
+
+  const detectCardBrand = (num: string) => {
+    const n = num.replace(/\s+/g, '')
+    if (/^4[0-9]{0,}$/.test(n)) return 'visa'
+    if (/^5[1-5][0-9]{0,}$/.test(n) || /^2(?:2[2-9]|[3-6][0-9]|7[01]|720)[0-9]{0,}$/.test(n)) return 'mastercard'
+    if (/^3[47][0-9]{0,}$/.test(n)) return 'amex'
+    return null
+  }
+
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\D/g, '')
+    // Grouping: Amex 4-6-5, others 4-4-4-4
+    if (cardBrand === 'amex') {
+      return v.replace(/(\d{1,4})(\d{1,6})?(\d{1,5})?/, (m, a, b, c) => [a, b, c].filter(Boolean).join(' '))
+    }
+    return v.replace(/(\d{1,4})(\d{1,4})?(\d{1,4})?(\d{1,4})?/, (m, a, b, c, d) => [a, b, c, d].filter(Boolean).join(' '))
+  }
+
   const firstModalFocusable = useRef<HTMLButtonElement | null>(null)
 
   // Rastreamento de entrega
@@ -1182,6 +1206,92 @@ const TPlace = () => {
                         <div className="text-sm text-ink/80">Vencimento em 3 dias úteis</div>
                       </div>
                     </label>
+                    {/* Credit card form + simulated card preview */}
+                    {checkoutData.paymentMethod === 'credit' && (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        {/* Simulated card preview */}
+                        <div className="relative bg-gradient-to-r from-primary-700 to-primary-900 text-white rounded-xl p-6 min-h-[160px] flex flex-col justify-between">
+                          <div className="flex items-start justify-between">
+                            <div className="text-sm opacity-90">TPlace</div>
+                            <div className="text-sm font-bold uppercase tracking-wider">
+                              {cardBrand === 'visa' ? 'VISA' : cardBrand === 'mastercard' ? 'Mastercard' : cardBrand === 'amex' ? 'AMEX' : ''}
+                            </div>
+                          </div>
+
+                          <div className="mt-4 font-mono text-lg tracking-widest">
+                            {formatCardNumber(cardNumber) || '#### #### #### ####'}
+                          </div>
+
+                          <div className="flex items-center justify-between mt-4 text-sm">
+                            <div>
+                              <div className="text-xs opacity-80">Nome</div>
+                              <div className="font-semibold">{cardName || 'SEU NOME AQUI'}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs opacity-80">Validade</div>
+                              <div className="font-semibold">{cardExpiry || 'MM/AA'}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card inputs */}
+                        <div>
+                          <label className="block text-sm font-bold mb-2">Número do cartão</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="cc-number"
+                            placeholder="0000 0000 0000 0000"
+                            value={cardNumber}
+                            maxLength={16}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/[^0-9]/g, '')
+                              const sliced = raw.slice(0, 16) // limit to 16 digits
+                              const brand = detectCardBrand(sliced)
+                              setCardBrand(brand)
+                              setCardNumber(sliced)
+                            }}
+                            className="w-full px-4 py-3 border-2 border-sand-strong rounded-lg focus:outline-none focus:ring-4 focus:ring-primary-500/30 mb-3"
+                          />
+
+                          <label className="block text-sm font-bold mb-2">Nome no cartão</label>
+                          <input
+                            type="text"
+                            autoComplete="cc-name"
+                            placeholder="Como no cartão"
+                            value={cardName}
+                            onChange={(e) => setCardName(e.target.value)}
+                            className="w-full px-4 py-3 border-2 border-sand-strong rounded-lg focus:outline-none focus:ring-4 focus:ring-primary-500/30 mb-3"
+                          />
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-sm font-bold mb-2">Validade (MM/AA)</label>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="MM/AA"
+                                value={cardExpiry}
+                                onChange={(e) => setCardExpiry(e.target.value.replace(/[^0-9/]/g, '').slice(0,5))}
+                                className="w-full px-4 py-3 border-2 border-sand-strong rounded-lg focus:outline-none focus:ring-4 focus:ring-primary-500/30"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-bold mb-2">CVC</label>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="CVC"
+                                value={cardCVC}
+                                onChange={(e) => setCardCVC(e.target.value.replace(/\D/g, '').slice(0,4))}
+                                className="w-full px-4 py-3 border-2 border-sand-strong rounded-lg focus:outline-none focus:ring-4 focus:ring-primary-500/30"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Resumo */}
