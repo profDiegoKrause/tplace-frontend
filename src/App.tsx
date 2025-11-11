@@ -1219,49 +1219,54 @@ const TPlace = () => {
             {/* Footer do modal */}
             {cart.length > 0 && (
               <div className="p-6 border-t bg-sand">
-                <div className="flex items-center justify-between gap-4">
-                  {checkoutStep > 1 && (
-                    <button onClick={() => setCheckoutStep(checkoutStep - 1)} className="px-6 py-3 border-2 border-sand-strong text-ink rounded-lg hover:bg-white transition font-semibold min-h-[44px]">
-                      Voltar
-                    </button>
-                  )}
-                  <div className="flex-1 text-right">
-                    <p className="text-sm text-ink/70 mb-1">Total</p>
-                    <p className="text-2xl font-bold text-primary-900">{currencyBRL.format(getTotalPrice())}</p>
+                {/* Mobile: stack actions vertically; Desktop: actions in a row. Total was removed per request. */}
+                <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+                  <div className="w-full md:w-auto">
+                    {checkoutStep > 1 && (
+                      <button
+                        onClick={() => setCheckoutStep(checkoutStep - 1)}
+                        className="w-full md:w-auto px-6 py-3 border-2 border-sand-strong text-ink rounded-lg hover:bg-white transition font-semibold min-h-[44px]"
+                      >
+                        Voltar
+                      </button>
+                    )}
                   </div>
-                  <button
-                    onClick={() => {
-                      if (checkoutStep < 3) {
-                        setCheckoutStep(checkoutStep + 1)
-                      } else {
-                        // Gerar ordem e abrir rastreamento
-                        const orderId = 'ORD-' + Date.now().toString().slice(-8)
-                        const store = stores.find((s) => s.id === cart[0]?.store)
-                        setDeliveryData({
-                          orderId,
-                          items: cart,
-                          store,
-                          destination: {
-                            address: checkoutData.address,
-                            number: checkoutData.number,
-                            neighborhood: checkoutData.neighborhood,
-                            city: checkoutData.city,
-                            state: checkoutData.state,
-                          },
-                          createdAt: new Date(),
-                        })
-                        setDeliveryStatus('confirmed')
-                        setDeliveryProgress(5)
-                        setShowTrackingModal(true)
-                        setCart([])
-                        setShowCart(false)
-                        setCheckoutStep(1)
-                      }
-                    }}
-                    className="px-8 py-4 bg-primary-700 text-white rounded-lg hover:bg-primary-900 transition font-bold text-lg shadow-lg min-h-[44px]"
-                  >
-                    {checkoutStep === 1 ? 'Continuar' : checkoutStep === 2 ? 'Ir para pagamento' : 'Finalizar pedido'}
-                  </button>
+
+                  <div className="w-full md:w-auto">
+                    <button
+                      onClick={() => {
+                        if (checkoutStep < 3) {
+                          setCheckoutStep(checkoutStep + 1)
+                        } else {
+                          // Gerar ordem e abrir rastreamento
+                          const orderId = 'ORD-' + Date.now().toString().slice(-8)
+                          const store = stores.find((s) => s.id === cart[0]?.store)
+                          setDeliveryData({
+                            orderId,
+                            items: cart,
+                            store,
+                            destination: {
+                              address: checkoutData.address,
+                              number: checkoutData.number,
+                              neighborhood: checkoutData.neighborhood,
+                              city: checkoutData.city,
+                              state: checkoutData.state,
+                            },
+                            createdAt: new Date(),
+                          })
+                          setDeliveryStatus('confirmed')
+                          setDeliveryProgress(5)
+                          setShowTrackingModal(true)
+                          setCart([])
+                          setShowCart(false)
+                          setCheckoutStep(1)
+                        }
+                      }}
+                      className="w-full md:w-auto px-8 py-4 bg-primary-700 text-white rounded-lg hover:bg-primary-900 transition font-bold text-lg shadow-lg min-h-[44px]"
+                    >
+                      {checkoutStep === 1 ? 'Continuar' : checkoutStep === 2 ? 'Ir para pagamento' : 'Finalizar pedido'}
+                    </button>
+                  </div>
                 </div>
                 <p className="text-center text-xs text-ink/70 mt-3">Pagamento seguro • Compra protegida • Entrega garantida</p>
               </div>
