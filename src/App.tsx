@@ -20,6 +20,8 @@ import {
   Minus,
   Zap,
 } from 'lucide-react'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
 /**
  * TPlace - Marketplace de comércio local
@@ -28,6 +30,90 @@ import {
  * - Compra condicional (entrega agendada e alerta de preço)
  * - Suporte a lojas locais
  */
+
+// === Componente de Mapa de Rastreamento ===
+const MapTrackingComponent: React.FC<{ deliveryProgress: number }> = ({ deliveryProgress }) => {
+  const mapContainer = useRef<HTMLDivElement>(null)
+  const map = useRef<L.Map | null>(null)
+  const markerStore = useRef<L.Marker | null>(null)
+  const markerDelivery = useRef<L.Marker | null>(null)
+  const markerDest = useRef<L.Marker | null>(null)
+
+  // Coordenadas: FAG Toledo, PR (Rua Floriano Peixoto, 1000 - Centro)
+  const destineLocation = { lat: -25.4095, lng: -54.5889, name: 'FAG Toledo - Rua Floriano Peixoto, 1000' }
+
+  // Origem: Centro de Toledo, PR
+  const storeLocation = { lat: -25.4125, lng: -54.5895, name: 'Centro de Toledo' }
+
+  // Posição animada do entregador (interpolação entre loja e destino)
+  const deliveryLocation = {
+    lat: storeLocation.lat + (destineLocation.lat - storeLocation.lat) * (deliveryProgress / 100),
+    lng: storeLocation.lng + (destineLocation.lng - storeLocation.lng) * (deliveryProgress / 100),
+  }
+
+  useEffect(() => {
+    if (!mapContainer.current) return
+
+    // Inicializar mapa apenas uma vez
+    if (!map.current) {
+      map.current = L.map(mapContainer.current).setView([destineLocation.lat, destineLocation.lng], 15)
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map.current)
+
+      // Marcador da loja (origem)
+      markerStore.current = L.marker([storeLocation.lat, storeLocation.lng], {
+        icon: L.icon({
+          iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlZjQ0NDQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgMTBjMCA3LTkgMTMtOSAxM3MtOSAtNiAtOSAtMTNhOSA5IDAgMCAxIDE4IDB6Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMCIgcj0iMyIvPjwvc3ZnPg==',
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+        }),
+      })
+        .addTo(map.current)
+        .bindPopup(`<strong>Loja de origem</strong><br/>${storeLocation.name}`)
+
+      // Marcador de destino (FAG Toledo)
+      markerDest.current = L.marker([destineLocation.lat, destineLocation.lng], {
+        icon: L.icon({
+          iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMxMGI5ODEiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgMTBjMCA3LTkgMTMtOSAxM3MtOSAtNiAtOSAtMTNhOSA5IDAgMCAxIDE4IDB6Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMCIgcj0iMyIvPjwvc3ZnPg==',
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+        }),
+      })
+        .addTo(map.current)
+        .bindPopup(`<strong>Seu Destino</strong><br/>${destineLocation.name}`)
+
+      // Desenhar linha de rota
+      const routeLine = L.polyline([[storeLocation.lat, storeLocation.lng], [destineLocation.lat, destineLocation.lng]], {
+        color: '#f97316',
+        weight: 3,
+        opacity: 0.7,
+        dashArray: '5, 10',
+      }).addTo(map.current)
+
+      map.current.fitBounds(routeLine.getBounds(), { padding: [50, 50] })
+    }
+
+    // Atualizar posição do entregador
+    if (markerDelivery.current) {
+      markerDelivery.current.setLatLng([deliveryLocation.lat, deliveryLocation.lng])
+    } else if (map.current) {
+      markerDelivery.current = L.marker([deliveryLocation.lat, deliveryLocation.lng], {
+        icon: L.icon({
+          iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmOTczMTYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSI0IiB5PSI5IiB3aWR0aD0iMTYiIGhlaWdodD0iOCIgcng9IjEiLz48cGF0aCBkPSJNMTAgOXY2bTQgLTZ2NiIvPjwvc3ZnPg==',
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+        }),
+      })
+        .addTo(map.current)
+        .bindPopup('🚙 Entregador em movimento')
+    }
+  }, [deliveryProgress])
+
+  return <div ref={mapContainer} className="bg-sand rounded-xl overflow-hidden h-96 border-2 border-sand-strong" />
+}
 
 // === Utilidades puras (facilitam testes) ===
 const currencyBRL = new Intl.NumberFormat('pt-BR', {
@@ -79,6 +165,12 @@ const TPlace = () => {
   })
 
   const firstModalFocusable = useRef<HTMLButtonElement | null>(null)
+
+  // Rastreamento de entrega
+  const [showTrackingModal, setShowTrackingModal] = useState(false)
+  const [deliveryStatus, setDeliveryStatus] = useState<'pending' | 'confirmed' | 'preparing' | 'ready' | 'in-transit' | 'arrived'>('pending')
+  const [deliveryData, setDeliveryData] = useState<any>(null)
+  const [deliveryProgress, setDeliveryProgress] = useState(0)
 
   // Lojas
   const stores = [
@@ -206,6 +298,22 @@ const TPlace = () => {
       setConditionalPrice('')
     }
   }, [quickViewProduct])
+
+  // Simular progresso de entrega
+  useEffect(() => {
+    if (showTrackingModal && deliveryStatus !== 'arrived') {
+      const interval = setInterval(() => {
+        setDeliveryProgress((prev) => {
+          if (prev >= 100) {
+            setDeliveryStatus('arrived')
+            return 100
+          }
+          return prev + Math.random() * 15
+        })
+      }, 2000)
+      return () => clearInterval(interval)
+    }
+  }, [showTrackingModal, deliveryStatus])
 
   return (
     <div className="min-h-screen bg-sand text-ink">
@@ -574,6 +682,128 @@ const TPlace = () => {
         </div>
       </div>
 
+      {/* Modal de rastreamento de entrega */}
+      {showTrackingModal && deliveryData && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowTrackingModal(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tracking-titulo"
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header - Sticky/Fixed */}
+            <div className="p-6 border-b bg-gradient-to-r from-primary-700 to-primary-900 text-white flex-shrink-0">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 id="tracking-titulo" className="text-2xl font-bold">Rastreando seu pedido</h2>
+                  <p className="text-sm opacity-90">{deliveryData.orderId}</p>
+                </div>
+                <button onClick={() => setShowTrackingModal(false)} className="p-2 hover:bg-white/20 rounded-lg">
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Barra de progresso */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm font-semibold">
+                  <span>Progresso da entrega</span>
+                  <span>{Math.round(Math.min(deliveryProgress, 100))}%</span>
+                </div>
+                <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-white h-full rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${Math.min(deliveryProgress, 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Conteúdo - Scrollável */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Mapa Leaflet */}
+              <MapTrackingComponent deliveryProgress={deliveryProgress} />
+
+              {/* Timeline de status */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-lg">Status do pedido</h3>
+                <div className="space-y-3">
+                  {[
+                    { status: 'confirmed', label: 'Pedido confirmado', icon: '✓' },
+                    { status: 'preparing', label: 'Preparando pedido', icon: '📦' },
+                    { status: 'ready', label: 'Pronto para entrega', icon: '✓' },
+                    { status: 'in-transit', label: 'Em trânsito', icon: '🚙' },
+                    { status: 'arrived', label: 'Entregue', icon: '🎉' },
+                  ].map((item, idx) => {
+                    const isActive = deliveryProgress >= (idx * 25)
+                    const isCurrent = deliveryProgress >= (idx * 25) && deliveryProgress < ((idx + 1) * 25)
+                    return (
+                      <div key={item.status} className="flex gap-4">
+                        <div className="relative flex flex-col items-center">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+                              isActive ? 'bg-primary-700 text-white scale-110' : 'bg-sand-strong text-ink'
+                            } ${isCurrent ? 'ring-4 ring-primary-500/40 animate-pulse' : ''}`}
+                          >
+                            {item.icon}
+                          </div>
+                          {idx < 4 && <div className={`w-1 h-12 ${isActive ? 'bg-primary-700' : 'bg-sand-strong'}`} />}
+                        </div>
+                        <div className="flex-1 pt-1">
+                          <p className={`font-semibold ${isActive ? 'text-ink' : 'text-ink/50'}`}>{item.label}</p>
+                          {isCurrent && <p className="text-xs text-primary-700 animate-pulse">Em progresso...</p>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Detalhes do pedido */}
+              <div className="bg-sand rounded-lg p-4 space-y-3">
+                <h4 className="font-bold">Informações da entrega</h4>
+                <div className="space-y-2 text-sm">
+                  <p><strong>Endereço:</strong> Rua Floriano Peixoto, 1000 — Centro, Toledo, PR</p>
+                  <p><strong>Entregador:</strong> João Silva (⭐ 4.9)</p>
+                  <p><strong>Telefone:</strong> (11) 99999-8888</p>
+                  <p><strong>Tempo estimado:</strong> {Math.round((1 - deliveryProgress / 100) * 45)} minutos</p>
+                </div>
+              </div>
+
+              {/* Botões de ação */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => showToast('Mensagem enviada ao entregador!', 'success')}
+                  className="flex-1 border-2 border-primary-700 text-primary-700 py-3 rounded-lg hover:bg-primary-500/10 transition font-semibold"
+                >
+                  💬 Enviar mensagem
+                </button>
+                <button
+                  onClick={() => showToast('Chamada iniciada...', 'info')}
+                  className="flex-1 border-2 border-primary-700 text-primary-700 py-3 rounded-lg hover:bg-primary-500/10 transition font-semibold"
+                >
+                  📞 Ligar
+                </button>
+                {deliveryStatus === 'arrived' && (
+                  <button
+                    onClick={() => {
+                      showToast('Pedido recebido com sucesso! 🎉', 'success')
+                      setShowTrackingModal(false)
+                    }}
+                    className="flex-1 bg-primary-700 text-white py-3 rounded-lg hover:bg-primary-900 transition font-semibold"
+                  >
+                    Confirmar recebimento
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Carrinho / Checkout */}
       {filtersModalOpen && (
         <div
@@ -929,7 +1159,25 @@ const TPlace = () => {
                       if (checkoutStep < 3) {
                         setCheckoutStep(checkoutStep + 1)
                       } else {
-                        showToast('Pedido finalizado com sucesso! 🎉')
+                        // Gerar ordem e abrir rastreamento
+                        const orderId = 'ORD-' + Date.now().toString().slice(-8)
+                        const store = stores.find((s) => s.id === cart[0]?.store)
+                        setDeliveryData({
+                          orderId,
+                          items: cart,
+                          store,
+                          destination: {
+                            address: checkoutData.address,
+                            number: checkoutData.number,
+                            neighborhood: checkoutData.neighborhood,
+                            city: checkoutData.city,
+                            state: checkoutData.state,
+                          },
+                          createdAt: new Date(),
+                        })
+                        setDeliveryStatus('confirmed')
+                        setDeliveryProgress(5)
+                        setShowTrackingModal(true)
                         setCart([])
                         setShowCart(false)
                         setCheckoutStep(1)
