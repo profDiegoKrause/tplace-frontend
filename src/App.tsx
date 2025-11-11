@@ -40,10 +40,10 @@ const MapTrackingComponent: React.FC<{ deliveryProgress: number }> = ({ delivery
   const markerDest = useRef<L.Marker | null>(null)
 
   // Coordenadas: FAG Toledo, PR (Rua Floriano Peixoto, 1000 - Centro)
-  const destineLocation = { lat: -25.4095, lng: -54.5889, name: 'FAG Toledo - Rua Floriano Peixoto, 1000' }
+  const destineLocation = { lat: -24.72222, lng: -53.76165, name: 'FAG Toledo - Rua Floriano Peixoto, 1000' }
 
   // Origem: Centro de Toledo, PR
-  const storeLocation = { lat: -25.4125, lng: -54.5895, name: 'Centro de Toledo' }
+  const storeLocation = { lat: -24.7136, lng: -53.7431, name: 'Centro de Toledo' }
 
   // Posição animada do entregador (interpolação entre loja e destino)
   const deliveryLocation = {
@@ -87,7 +87,7 @@ const MapTrackingComponent: React.FC<{ deliveryProgress: number }> = ({ delivery
 
       // Desenhar linha de rota
       const routeLine = L.polyline([[storeLocation.lat, storeLocation.lng], [destineLocation.lat, destineLocation.lng]], {
-        color: '#f97316',
+        color: '#A7C957',
         weight: 3,
         opacity: 0.7,
         dashArray: '5, 10',
